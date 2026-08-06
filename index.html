@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minificador Inteligente</title>
+    <style>
+        /* Variáveis de Tema (Light Mode Minimalista) */
+        :root {
+            --bg-body: #f9fafb;
+            --bg-container: #ffffff;
+            --text-main: #374151;
+            --text-title: #111827;
+            --text-subtitle: #6b7280;
+            --border-color: #e5e7eb;
+            --accent: #3b82f6; /* Azul moderno */
+            --accent-hover: #2563eb;
+            --success: #10b981;
+            --danger: #ef4444;
+            --unified-bg: #f3f4f6;
+            --overlay-bg: rgba(59, 130, 246, 0.9);
+            --focus-ring: #60a5fa;
+            --radius-lg: 16px;
+            --radius-md: 8px;
+            --shadow-soft: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+        }
+
+        /* Variáveis de Tema (Dark Mode Moderno - Tons de Slate) */
+        [data-theme="dark"] {
+            --bg-body: #0f172a;
+            --bg-container: #1e293b;
+            --text-main: #cbd5e1;
+            --text-title: #f8fafc;
+            --text-subtitle: #94a3b8;
+            --border-color: #334155;
+            --accent: #3b82f6;
+            --unified-bg: #0f172a;
+            --overlay-bg: rgba(30, 64, 175, 0.95);
+            --shadow-soft: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Reset e Transições */
+        body, .container, textarea, .controls-wrapper, .progress-container, button {
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.2s ease;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            line-height: 1.5;
+        }
+
+        /* Acessibilidade visual */
+        *:focus-visible {
+            outline: 3px solid var(--focus-ring);
+            outline-offset: 2px;
+        }
+
+        /* Header e Toggles */
+        .top-controls {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-bottom: 30px;
+        }
+        .icon-btn {
+            background: var(--bg-container);
+            color: var(--text-subtitle);
+            border: 1px solid var(--border-color);
+            padding: 8px 16px;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .icon-btn:hover { color: var(--text-main); border-color: var(--text-subtitle); }
+
+        .container {
+            background-color: var(--bg-container);
+            padding: 40px;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-soft);
+            border: 1px solid var(--border-color);
+        }
+        h1 { text-align: center; color: var(--text-title); margin: 0 0 8px 0; font-size: 28px; font-weight: 700; }
+        p.subtitle { text-align: center; color: var(--text-subtitle); margin: 0 0 40px 0; font-size: 15px; }
+        
+        .header-actions { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+
+        /* Área Unificada */
+        .unified-area {
+            position: relative;
+            border: 2px dashed var(--border-color);
+            border-radius: var(--radius-md);
+            background-color: var(--unified-bg);
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+        .unified-area:hover { border-color: var(--accent); }
+        .unified-area.dragover { background-color: var(--border-color); border-color: var(--accent); }
+        
+        textarea {
+            width: 100%;
+            height: 220px;
+            padding: 24px;
+            border: none;
+            resize: vertical;
+            background: transparent;
+            color: var(--text-main);
+            font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+        textarea::placeholder { color: var(--text-subtitle); opacity: 0.7; }
+        
+        .drag-overlay {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: var(--overlay-bg); color: white;
+            font-size: 20px; font-weight: 600;
+            display: flex; align-items: center; justify-content: center;
+            z-index: 20; opacity: 0; pointer-events: none; transition: opacity 0.2s;
+        }
+        .unified-area.dragover .drag-overlay { opacity: 1; }
+        
+        .file-loaded-overlay {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: var(--bg-container);
+            display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 10;
+        }
+        .file-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.8; }
+        .file-name { font-weight: 600; font-size: 16px; margin-bottom: 20px; color: var(--text-title); }
+        
+        /* Botões */
+        button { font-family: inherit; }
+        .btn-upload {
+            background-color: transparent; color: var(--accent);
+            border: 1px solid var(--accent); padding: 8px 16px;
+            font-size: 14px; font-weight: 500; border-radius: var(--radius-md); cursor: pointer;
+        }
+        .btn-upload:hover { background-color: var(--accent); color: #fff; }
+
+        .btn-remove {
+            background-color: transparent; color: var(--danger); border: 1px solid var(--danger);
+            padding: 8px 20px; border-radius: var(--radius-md); cursor: pointer; font-size: 13px; font-weight: 600;
+        }
+        .btn-remove:hover { background-color: var(--danger); color: white; }
+
+        .controls-wrapper {
+            display: flex; justify-content: space-between; align-items: center;
+            background-color: var(--bg-body); padding: 20px;
+            border-radius: var(--radius-md); border: 1px solid var(--border-color);
+            margin-bottom: 24px; flex-wrap: wrap; gap: 16px;
+        }
+        
+        .turbo-toggle { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+        .turbo-toggle input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); }
+        .turbo-text { font-size: 14px; }
+        .turbo-text strong { color: var(--text-title); display: block; font-weight: 600; }
+        .turbo-text span { color: var(--text-subtitle); font-size: 13px; }
+
+        .btn-primary {
+            background-color: var(--accent); color: white; border: none; padding: 14px 28px;
+            font-size: 15px; font-weight: 600; border-radius: var(--radius-md); cursor: pointer;
+            box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.2);
+        }
+        .btn-primary:hover { background-color: var(--accent-hover); }
+        .btn-primary:disabled { background-color: var(--border-color); color: var(--text-subtitle); cursor: not-allowed; box-shadow: none; }
+        
+        /* Progresso */
+        .progress-container {
+            display: none; padding: 20px; background-color: var(--bg-body);
+            border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-bottom: 24px;
+        }
+        progress { width: 100%; height: 8px; border-radius: 4px; border: none; background-color: var(--border-color); }
+        progress::-webkit-progress-bar { background-color: var(--border-color); border-radius: 4px; }
+        progress::-webkit-progress-value { background-color: var(--accent); border-radius: 4px; transition: width 0.2s ease; }
+        .time-info { display: flex; justify-content: space-between; font-size: 13px; margin-top: 12px; color: var(--text-subtitle); font-weight: 500; }
+        
+        /* Status e Download */
+        #statusMessage { 
+            text-align: center; font-weight: 500; font-size: 15px; 
+            margin: 0 0 24px 0; padding: 16px; border-radius: var(--radius-md); display: none; 
+        }
+        .status-success { background-color: rgba(16, 185, 129, 0.1); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.2); }
+        .status-error { background-color: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.2); }
+        
+        .download-btn { display: none; width: 100%; text-align: center; }
+    </style>
+</head>
+<body>
+
+    <header class="top-controls" aria-label="Controles de página e acessibilidade">
+        <button id="themeToggle" class="icon-btn" aria-label="Alternar modo escuro e claro">🌙 Escuro</button>
+        <button id="langToggle" class="icon-btn" aria-label="Alternar idioma">🇺🇸 EN</button>
+    </header>
+
+    <main class="container" role="main">
+        <h1 data-i18n="title">Minificador Inteligente</h1>
+        <p class="subtitle" data-i18n="subtitle">Suporte para JS, CSS, JSON, Python e YAML</p>
+
+        <input type="file" id="fileInput" style="display: none;" aria-hidden="true">
+
+        <div class="header-actions">
+            <button class="btn-upload" aria-label="Procurar arquivos no computador" onclick="document.getElementById('fileInput').click()" data-i18n="browseFiles">
+                <span aria-hidden="true">📁</span> Procurar Arquivo
+            </button>
+        </div>
+
+        <section aria-label="Área de entrada de código">
+            <div class="unified-area" id="unifiedArea">
+                <label for="inputCode" class="sr-only" style="display:none;">Cole seu código ou arraste o arquivo aqui</label>
+                <textarea id="inputCode" aria-label="Área de digitação de código" data-i18n-placeholder="placeholder" placeholder="// Cole seu código aqui, ou arraste e solte o arquivo nesta caixa..."></textarea>
+                
+                <div class="file-loaded-overlay" id="fileLoadedOverlay" aria-live="polite">
+                    <div class="file-icon" aria-hidden="true">📄</div>
+                    <div class="file-name" id="fileNameDisplay">arquivo.js (0 MB)</div>
+                    <button class="btn-remove" id="removeFileBtn" data-i18n="removeFile" aria-label="Remover arquivo carregado">Remover Arquivo</button>
+                </div>
+                
+                <div class="drag-overlay" aria-hidden="true" data-i18n="dropHere">Solte o arquivo aqui</div>
+            </div>
+        </section>
+
+        <section class="controls-wrapper" aria-label="Opções de Minificação">
+            <label class="turbo-toggle" title="Acelera a minificação para arquivos gigantes">
+                <input type="checkbox" id="turboMode" checked aria-label="Ativar Modo Turbo">
+                <div class="turbo-text">
+                    <strong data-i18n="turboTitle">Modo Turbo / Otimizado</strong>
+                    <span data-i18n="turboDesc">Habilita fallback rápido e proteção para Python/YAML.</span>
+                </div>
+            </label>
+            <button id="minifyBtn" class="btn-primary" data-i18n="minifyBtn" aria-label="Iniciar minificação">Minificar Código</button>
+        </section>
+
+        <section id="progressContainer" class="progress-container" aria-live="polite" aria-atomic="true">
+            <label for="progressBar" style="display:none;" data-i18n="progressLabel">Progresso</label>
+            <progress id="progressBar" value="0" max="100"></progress>
+            <div class="time-info">
+                <span id="timeElapsed" data-i18n="elapsed">Decorrido: 0.0s</span>
+                <span id="timeEstimated" data-i18n="estimated">Estimativa: Calculando...</span>
+            </div>
+        </section>
+
+        <!-- aria-live="assertive" garante que erros/sucessos sejam lidos imediatamente -->
+        <div id="statusMessage" aria-live="assertive" role="alert"></div>
+
+        <button id="downloadBtn" class="btn-primary download-btn" data-i18n="downloadBtn" aria-label="Baixar o arquivo processado">Baixar Arquivo</button>
+    </main>
+
+    <script>
+        /* ================= DIRETÓRIO DE IDIOMAS (i18n) ================= */
+        const dict = {
+            'pt': {
+                title: "Minificador Inteligente",
+                subtitle: "Suporte seguro para JS, CSS, JSON, Python e YAML",
+                browseFiles: "Procurar Arquivo",
+                placeholder: "// Cole seu código aqui, ou arraste e solte o arquivo nesta caixa...",
+                dropHere: "Solte o arquivo aqui",
+                removeFile: "Remover Arquivo",
+                turboTitle: "Modo Turbo / Otimizado",
+                turboDesc: "Habilita fallback rápido e proteção para Python/YAML.",
+                minifyBtn: "Minificar Código",
+                progressLabel: "Progresso",
+                elapsed: "Decorrido: ",
+                estimated: "Estimativa: Calculando...",
+                downloadBtn: "Baixar Arquivo",
+                msgProcess: "Processando...",
+                msgAlertPaste: "Cole o código ou arraste um arquivo primeiro.",
+                msgDone: "✅ Concluído em ",
+                msgError: "❌ Erro: ",
+                msgEstimated: "Estimativa: ",
+                themeDarkText: "🌙 Escuro",
+                themeLightText: "☀️ Claro",
+                langText: "🇺🇸 EN"
+            },
+            'en': {
+                title: "Smart Minifier",
+                subtitle: "Safe support for JS, CSS, JSON, Python and YAML",
+                browseFiles: "Browse Files",
+                placeholder: "// Paste your code here, or drag and drop a file into this box...",
+                dropHere: "Drop the file here",
+                removeFile: "Remove File",
+                turboTitle: "Turbo / Optimized Mode",
+                turboDesc: "Enables fast fallback and Python/YAML protection.",
+                minifyBtn: "Minify Code",
+                progressLabel: "Progress",
+                elapsed: "Elapsed: ",
+                estimated: "Estimated: Calculating...",
+                downloadBtn: "Download File",
+                msgProcess: "Processing...",
+                msgAlertPaste: "Paste code or drag a file first.",
+                msgDone: "✅ Completed in ",
+                msgError: "❌ Error: ",
+                msgEstimated: "Estimated: ",
+                themeDarkText: "🌙 Dark",
+                themeLightText: "☀️ Light",
+                langText: "🇧🇷 PT"
+            }
+        };
+
+        /* ================= ESTADOS E UI ================= */
+        let currentLang = localStorage.getItem('minifier_lang') || 'pt';
+        const htmlEl = document.documentElement;
+        const themeToggleBtn = document.getElementById('themeToggle');
+        const langToggleBtn = document.getElementById('langToggle');
+
+        // Detecta o tema padrão do Sistema/Navegador
+        function getPreferredTheme() {
+            const savedTheme = localStorage.getItem('minifier_theme');
+            if (savedTheme) return savedTheme; // Respeita a escolha manual do usuário
+            
+            // Lê a preferência do sistema operacional
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                return 'dark';
+            }
+            return 'light';
+        }
+
+        let currentTheme = getPreferredTheme();
+
+        // Escuta mudanças em tempo real no tema do sistema (ex: mudança automática ao anoitecer)
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+            // Só altera sozinho se o usuário não tiver forçado um tema manualmente no nosso site
+            if (!localStorage.getItem('minifier_theme')) {
+                applyTheme(event.matches ? 'dark' : 'light');
+            }
+        });
+
+        function applyTheme(theme) {
+            htmlEl.setAttribute('data-theme', theme);
+            localStorage.setItem('minifier_theme', theme);
+            currentTheme = theme;
+            updateToggleText();
+        }
+
+        function applyLang(lang) {
+            currentLang = lang;
+            htmlEl.setAttribute('lang', lang === 'pt' ? 'pt-BR' : 'en');
+            localStorage.setItem('minifier_lang', lang);
+            
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (dict[lang][key]) {
+                    // Prevenir a sobrescrita do ícone de pasta no botão
+                    if(el.tagName === 'BUTTON' && el.querySelector('span')) {
+                        el.childNodes[1].textContent = " " + dict[lang][key];
+                    } else {
+                        el.textContent = dict[lang][key];
+                    }
+                }
+            });
+
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                const key = el.getAttribute('data-i18n-placeholder');
+                if (dict[lang][key]) el.placeholder = dict[lang][key];
+            });
+
+            updateToggleText();
+        }
+
+        function updateToggleText() {
+            themeToggleBtn.textContent = currentTheme === 'light' ? dict[currentLang].themeDarkText : dict[currentLang].themeLightText;
+            langToggleBtn.textContent = dict[currentLang].langText;
+        }
+
+        themeToggleBtn.addEventListener('click', () => applyTheme(currentTheme === 'light' ? 'dark' : 'light'));
+        langToggleBtn.addEventListener('click', () => applyLang(currentLang === 'pt' ? 'en' : 'pt'));
+
+        applyTheme(currentTheme);
+        applyLang(currentLang);
+
+        /* ================= MINIFICADOR & WEB WORKER ================= */
+        const unifiedArea = document.getElementById('unifiedArea');
+        const inputCode = document.getElementById('inputCode');
+        const fileLoadedOverlay = document.getElementById('fileLoadedOverlay');
+        const fileNameDisplay = document.getElementById('fileNameDisplay');
+        const removeFileBtn = document.getElementById('removeFileBtn');
+        const fileInput = document.getElementById('fileInput');
+        const minifyBtn = document.getElementById('minifyBtn');
+        const turboMode = document.getElementById('turboMode');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+        const timeElapsedEl = document.getElementById('timeElapsed');
+        const timeEstimatedEl = document.getElementById('timeEstimated');
+        const statusMessage = document.getElementById('statusMessage');
+        
+        let currentFile = null;
+        let currentFileName = 'script.min.js';
+        let currentBlobUrl = null;
+        let worker;
+        let timerInterval, startTime, estimatedTimeMs;
+
+        function formatTime(totalSeconds) {
+            if (totalSeconds < 60) return totalSeconds.toFixed(1) + 's';
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = Math.floor(totalSeconds % 60);
+            return `${minutes}m ${seconds.toString().padStart(2, '0')}s`;
+        }
+
+        function showStatus(text, type) {
+            statusMessage.textContent = text;
+            statusMessage.className = 'status-' + type;
+            statusMessage.style.display = 'block';
+        }
+
+        function initWorker() {
+            const workerScript = String.raw`
+                importScripts('https://cdn.jsdelivr.net/npm/terser/dist/bundle.min.js');
+
+                function stateMachineMinifyJS(source) {
+                    let out = []; let i = 0; const n = source.length;
+                    let state = "normal"; let delim = "";
+                    while (i < n) {
+                        const c = source[i]; const nc = i + 1 < n ? source[i + 1] : "";
+                        if (state === "normal") {
+                            if (c === "/" && nc === "/") { i += 2; while (i < n && source[i] !== '\n' && source[i] !== '\r') i++; continue; }
+                            if (c === "/" && nc === "*") { i += 2; while (i < n - 1 && !(source[i] === "*" && source[i + 1] === "/")) i++; i += 2; continue; }
+                            if (c === '"' || c === "'" || c === '\`') { delim = c; state = c === '\`' ? "template" : "string"; out.push(c); i++; continue; }
+                            if (c === ' ' || c === '\t' || c === '\n' || c === '\r' || c === '\f' || c === '\v') {
+                                let j = i + 1;
+                                while (j < n && (source[j] === ' ' || source[j] === '\t' || source[j] === '\n' || source[j] === '\r' || source[j] === '\f' || source[j] === '\v')) j++;
+                                if (out.length > 0) {
+                                    const prev = out[out.length - 1]; const next_char = j < n ? source[j] : "";
+                                    if (/[a-zA-Z0-9_$]/.test(prev) && /[a-zA-Z0-9_$]/.test(next_char)) out.push(" ");
+                                }
+                                i = j; continue;
+                            }
+                            out.push(c); i++;
+                        } else if (state === "string" || state === "template") {
+                            out.push(c);
+                            if (c === "\\") { if (i + 1 < n) { out.push(source[i + 1]); i += 2; continue; } }
+                            if (c === delim) state = "normal"; i++;
+                        }
+                    }
+                    return out.join("");
+                }
+
+                function minifyCSS(source) {
+                    return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').replace(/\s*([\{?}:;,])\s*/g, '$1').trim();
+                }
+
+                function genericMinify(source) {
+                    return source.replace(/[\r\n]+/g, ' ').replace(/\s{2,}/g, ' ').trim();
+                }
+
+                // Proteção contra quebra de indentação (Python, YAML)
+                function safeMinify(source) {
+                    // Remove apenas linhas em branco e espaços no fim da linha. 
+                    // Preserva a indentação estrutural.
+                    return source.replace(/[ \t]+$/gm, '').replace(/^\s*[\r\n]/gm, '').trim();
+                }
+
+                self.onmessage = async function(e) {
+                    try {
+                        let codeToMinify = ''; let extension = 'js';
+                        if (e.data.type === 'file') {
+                            codeToMinify = await e.data.file.text();
+                            const match = e.data.file.name.match(/\.([0-9a-z]+)(?:[\?#]|$)/i);
+                            if (match) extension = match[1].toLowerCase();
+                        } else {
+                            codeToMinify = e.data.code; extension = e.data.extension || 'js'; 
+                        }
+
+                        let resultCode = '';
+                        if (extension === 'js') {
+                            if (e.data.isTurbo) resultCode = stateMachineMinifyJS(codeToMinify);
+                            else {
+                                const result = await Terser.minify(codeToMinify, { mangle: true, compress: true });
+                                if (result.error) throw result.error;
+                                resultCode = result.code;
+                            }
+                        } else if (extension === 'json') {
+                            resultCode = JSON.stringify(JSON.parse(codeToMinify));
+                        } else if (extension === 'css') {
+                            resultCode = minifyCSS(codeToMinify);
+                        } else if (['py', 'yml', 'yaml'].includes(extension)) {
+                            // Uso obrigatório do motor seguro para linguagens dependentes de indentação
+                            resultCode = safeMinify(codeToMinify);
+                        } else {
+                            resultCode = genericMinify(codeToMinify);
+                        }
+                        
+                        self.postMessage({ success: true, code: resultCode, isFile: e.data.type === 'file' });
+                    } catch (err) { self.postMessage({ success: false, error: err.message }); }
+                };
+            `;
+            const blob = new Blob([workerScript], { type: 'application/javascript' });
+            worker = new Worker(URL.createObjectURL(blob));
+
+            worker.onmessage = function(e) {
+                clearInterval(timerInterval);
+                progressBar.value = 100;
+                
+                minifyBtn.disabled = false;
+                minifyBtn.textContent = dict[currentLang].minifyBtn;
+
+                if (e.data.success) {
+                    const finalSecs = (Date.now() - startTime) / 1000;
+                    showStatus(dict[currentLang].msgDone + formatTime(finalSecs) + '!', 'success');
+                    
+                    const blob = new Blob([e.data.code], { type: 'text/plain' });
+                    if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
+                    currentBlobUrl = URL.createObjectURL(blob);
+                    
+                    downloadBtn.style.display = 'block';
+                    if (!e.data.isFile) inputCode.value = e.data.code; 
+                } else {
+                    progressContainer.style.display = 'none';
+                    showStatus(dict[currentLang].msgError + e.data.error, 'error');
+                }
+            };
+        }
+
+        initWorker();
+
+        function handleFileSelection(file) {
+            if (!file) return;
+            currentFile = file;
+            inputCode.value = '';
+            
+            const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+            fileNameDisplay.textContent = `${file.name} (${sizeMB} MB)`;
+            
+            inputCode.style.display = 'none';
+            fileLoadedOverlay.style.display = 'flex';
+            downloadBtn.style.display = 'none';
+            statusMessage.style.display = 'none';
+            progressContainer.style.display = 'none';
+
+            if (sizeMB > 5) turboMode.checked = true;
+            
+            const extIndex = file.name.lastIndexOf('.');
+            const baseName = extIndex !== -1 ? file.name.substring(0, extIndex) : file.name;
+            const ext = extIndex !== -1 ? file.name.substring(extIndex) : '';
+            currentFileName = baseName + '.min' + ext;
+        }
+
+        unifiedArea.addEventListener('dragover', (e) => { e.preventDefault(); unifiedArea.classList.add('dragover'); });
+        unifiedArea.addEventListener('dragleave', () => { unifiedArea.classList.remove('dragover'); });
+        unifiedArea.addEventListener('drop', (e) => {
+            e.preventDefault(); unifiedArea.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) handleFileSelection(e.dataTransfer.files[0]);
+        });
+        
+        fileInput.addEventListener('change', (e) => handleFileSelection(e.target.files[0]));
+
+        removeFileBtn.addEventListener('click', () => {
+            currentFile = null; fileInput.value = '';
+            fileLoadedOverlay.style.display = 'none';
+            inputCode.style.display = 'block';
+            inputCode.focus();
+        });
+
+        minifyBtn.addEventListener('click', function() {
+            if (!currentFile && !inputCode.value.trim()) {
+                alert(dict[currentLang].msgAlertPaste); return;
+            }
+
+            minifyBtn.disabled = true;
+            minifyBtn.textContent = dict[currentLang].msgProcess;
+            downloadBtn.style.display = 'none';
+            statusMessage.style.display = 'none';
+            
+            let sizeBytes = currentFile ? currentFile.size : new Blob([inputCode.value]).size;
+            let sizeMB = sizeBytes / (1024 * 1024);
+            const isTurbo = turboMode.checked;
+            
+            estimatedTimeMs = isTurbo ? Math.max(500, sizeMB * (1000 / 150)) : Math.max(1000, sizeMB * 2500); 
+            
+            progressContainer.style.display = 'block';
+            progressBar.value = 0; startTime = Date.now();
+            
+            timeEstimatedEl.textContent = dict[currentLang].msgEstimated + formatTime(estimatedTimeMs / 1000);
+            
+            timerInterval = setInterval(() => {
+                let elapsedMs = Date.now() - startTime;
+                timeElapsedEl.textContent = dict[currentLang].elapsed + formatTime(elapsedMs / 1000);
+                
+                let percent = (elapsedMs / estimatedTimeMs) * 100;
+                if (percent > 95) percent = 95; 
+                progressBar.value = percent;
+            }, 100);
+
+            if (currentFile) worker.postMessage({ type: 'file', file: currentFile, isTurbo: isTurbo });
+            else worker.postMessage({ type: 'text', code: inputCode.value, extension: 'js', isTurbo: isTurbo });
+        });
+
+        downloadBtn.addEventListener('click', function() {
+            if (!currentBlobUrl) return;
+            const a = document.createElement('a');
+            a.href = currentBlobUrl; a.download = currentFileName;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        });
+    </script>
+</body>
+</html>
