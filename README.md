@@ -33,11 +33,14 @@ Based on the repository structure, the project contains the following main files
 
 ### 🚀 How to Use
 
-#### Via Web Interface (Frontend)
+#### Local Web Interface
 1. Double-click the `index.html` file to open it in any modern browser (Chrome, Edge, Firefox, Safari).
 2. Drag and drop a file (e.g., `exemplo.js`) onto the dashed area, or simply paste your code into the text box.
 3. Click **Minify Code**.
 4. Download the optimized file (e.g., `exemplo.min.js`).
+
+#### Public Web Page
+Access the webpage: https://jluckmay.github.io/smart-minifier/ 
 
 ### 🛠️ Technologies Used
 
@@ -75,11 +78,14 @@ Conforme estruturado no repositório, o projeto contém os seguintes arquivos pr
 
 ### 🚀 Como Usar
 
-#### Via Interface Web (Frontend)
+#### Interface Web Local
 1. Dê um clique duplo no arquivo `index.html` para abri-lo em qualquer navegador moderno (Chrome, Edge, Firefox, Safari).
 2. Arraste e solte um arquivo (ex: `exemplo.js`) sobre a área pontilhada, ou simplesmente cole seu código na caixa de texto.
 3. Clique em **Minificar Código**.
 4. Faça o download do arquivo otimizado (ex: `exemplo.min.js`).
+
+#### Página Publica
+Acesse a seguinte página: https://jluckmay.github.io/smart-minifier/
 
 ### 🛠️ Tecnologias Utilizadas
 
